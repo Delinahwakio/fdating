@@ -425,6 +425,32 @@ export interface Database {
           created_at?: string
         }
       }
+      platform_config: {
+        Row: {
+          id: string
+          key: string
+          value: Json
+          description: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          key: string
+          value: Json
+          description?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          key?: string
+          value?: Json
+          description?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -441,7 +467,7 @@ export interface Database {
           p_chat_id: string
           p_reason: string
         }
-        Returns: void
+        Returns: boolean
       }
       get_available_fictional_profiles: {
         Args: {

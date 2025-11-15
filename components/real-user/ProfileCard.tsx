@@ -4,12 +4,14 @@ import { FictionalUser } from '@/types/database'
 import { GlassCard } from '@/components/shared/GlassCard'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { FICTIONAL_PROFILE_BLUR, imageSizes } from '@/lib/utils/imageOptimization'
 
 interface ProfileCardProps {
   profile: FictionalUser
+  priority?: boolean
 }
 
-export const ProfileCard = ({ profile }: ProfileCardProps) => {
+export const ProfileCard = ({ profile, priority = false }: ProfileCardProps) => {
   const router = useRouter()
 
   const handleClick = () => {
@@ -20,11 +22,15 @@ export const ProfileCard = ({ profile }: ProfileCardProps) => {
     <GlassCard onClick={handleClick} className="overflow-hidden">
       <div className="relative w-full aspect-[3/4]">
         <Image
-          src={profile.profile_pictures[0] || '/placeholder-profile.jpg'}
+          src={profile.profile_pictures[0] || '/placeholder-profile.svg'}
           alt={profile.name}
           fill
           className="object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          sizes={imageSizes.profileCard}
+          loading={priority ? undefined : 'lazy'}
+          priority={priority}
+          placeholder="blur"
+          blurDataURL={FICTIONAL_PROFILE_BLUR}
         />
       </div>
       <div className="p-4">

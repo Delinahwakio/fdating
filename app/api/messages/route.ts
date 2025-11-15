@@ -1,7 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { withRateLimit, RateLimitConfigs } from '@/lib/utils/rateLimit'
+import { errorHandler, ErrorTypes, assertExists } from '@/lib/utils/errors'
+import { validateAndSanitizeMessage } from '@/lib/utils/validation'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerClient()
     
@@ -9,37 +12,30 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      throw ErrorTypes.UNAUTHORIZED()
     }
+
+    // Apply rate limiting (30 messages per minute)
+    await withRateLimit(request, RateLimitConfigs.MESSAGE, user.id)
 
     const { chatId, content, senderId } = await request.json()
 
     // Validate input
     if (!chatId || !content || !senderId) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+      throw ErrorTypes.VALIDATION_ERROR('Missing required fields: chatId, content, or senderId')
     }
 
     if (senderId !== user.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      throw ErrorTypes.FORBIDDEN('You can only send messages as yourself')
     }
 
-    // Validate content length
-    const trimmedContent = content.trim()
-    if (trimmedContent.length === 0 || trimmedContent.length > 5000) {
-      return NextResponse.json(
-        { error: 'Message must be between 1 and 5000 characters' },
-        { status: 400 }
-      )
+    // Validate and sanitize message content
+    const validation = validateAndSanitizeMessage(content)
+    if (!validation.isValid) {
+      throw ErrorTypes.VALIDATION_ERROR(validation.error!)
     }
+
+    const trimmedContent = validation.sanitized!
 
     // Verify chat belongs to user
     const { data: chat, error: chatError } = await supabase
@@ -49,12 +45,11 @@ export async function POST(request: Request) {
       .eq('real_user_id', senderId)
       .single()
 
-    if (chatError || !chat) {
-      return NextResponse.json(
-        { error: 'Chat not found' },
-        { status: 404 }
-      )
+    if (chatError) {
+      throw ErrorTypes.DATABASE_ERROR('Failed to fetch chat')
     }
+    
+    assertExists(chat, 'Chat')
 
     // Get free message count from configuration
     const { data: freeMessageConfig } = await supabase
@@ -73,10 +68,7 @@ export async function POST(request: Request) {
       .eq('sender_type', 'real')
 
     if (countError) {
-      return NextResponse.json(
-        { error: 'Failed to check message count' },
-        { status: 500 }
-      )
+      throw ErrorTypes.DATABASE_ERROR('Failed to check message count')
     }
 
     const currentMessageCount = messageCount || 0
@@ -90,18 +82,14 @@ export async function POST(request: Request) {
         .eq('id', senderId)
         .single()
 
-      if (userError || !realUser) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 }
-        )
+      if (userError) {
+        throw ErrorTypes.DATABASE_ERROR('Failed to fetch user')
       }
+      
+      assertExists(realUser, 'User')
 
       if (realUser.credits < 1) {
-        return NextResponse.json(
-          { error: 'Insufficient credits. Please purchase more credits to continue chatting.' },
-          { status: 402 }
-        )
+        throw ErrorTypes.INSUFFICIENT_CREDITS()
       }
 
       // Deduct credit
@@ -111,10 +99,7 @@ export async function POST(request: Request) {
         .eq('id', senderId)
 
       if (deductError) {
-        return NextResponse.json(
-          { error: 'Failed to deduct credits' },
-          { status: 500 }
-        )
+        throw ErrorTypes.DATABASE_ERROR('Failed to deduct credits')
       }
     }
 
@@ -144,10 +129,7 @@ export async function POST(request: Request) {
           .eq('id', senderId)
       }
       
-      return NextResponse.json(
-        { error: 'Failed to send message' },
-        { status: 500 }
-      )
+      throw ErrorTypes.DATABASE_ERROR('Failed to send message')
     }
 
     // Update chat last_message_at and message_count
@@ -165,20 +147,21 @@ export async function POST(request: Request) {
       // Don't fail the request if chat update fails
     }
 
+    // Get updated credits
+    const { data: updatedUser } = await supabase
+      .from('real_users')
+      .select('credits')
+      .eq('id', senderId)
+      .single()
+
     return NextResponse.json(
       { 
         message,
-        credits_remaining: isFreeMessage 
-          ? (await supabase.from('real_users').select('credits').eq('id', senderId).single()).data?.credits 
-          : (await supabase.from('real_users').select('credits').eq('id', senderId).single()).data?.credits
+        credits_remaining: updatedUser?.credits || 0
       },
       { status: 201 }
     )
   } catch (error) {
-    console.error('Message API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorHandler(error)
   }
 }

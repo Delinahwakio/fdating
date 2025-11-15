@@ -1,12 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/contexts/AuthContext'
 import { FictionalUser } from '@/types/database'
 import { ProfileFilters, FilterState } from '@/components/real-user/ProfileFilters'
-import { ProfileGrid } from '@/components/real-user/ProfileGrid'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
+
+// Code splitting: Dynamically import ProfileGrid
+const ProfileGrid = dynamic(
+  () => import('@/components/real-user/ProfileGrid').then(mod => ({ default: mod.ProfileGrid })),
+  {
+    loading: () => (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner />
+      </div>
+    ),
+    ssr: false
+  }
+)
 
 const PROFILES_PER_PAGE = 12
 
@@ -44,38 +57,45 @@ export default function DiscoverPage() {
     fetchUserPreference()
   }, [user, supabase])
 
-  // Fetch profiles
+  // Fetch profiles using cached API route
   const fetchProfiles = async (pageNum: number, resetProfiles = false) => {
     if (!lookingFor) return
 
     setLoading(true)
 
     try {
-      let query = supabase
-        .from('fictional_users')
-        .select('*')
-        .eq('gender', lookingFor)
-        .eq('is_active', true)
-        .gte('age', filters.minAge)
-        .lte('age', filters.maxAge)
-        .order('created_at', { ascending: false })
-        .range(pageNum * PROFILES_PER_PAGE, (pageNum + 1) * PROFILES_PER_PAGE - 1)
+      // Build query parameters
+      const params = new URLSearchParams({
+        gender: lookingFor,
+        minAge: filters.minAge.toString(),
+        maxAge: filters.maxAge.toString(),
+      })
 
       if (filters.location) {
-        query = query.ilike('location', `%${filters.location}%`)
+        params.append('location', filters.location)
       }
 
-      const { data, error } = await query
+      // Fetch from cached API route
+      const response = await fetch(`/api/fictional-profiles?${params.toString()}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch profiles')
+      }
 
-      if (error) throw error
+      const { profiles: data } = await response.json()
 
       if (data) {
+        // Apply pagination client-side since cache returns all matching profiles
+        const startIndex = pageNum * PROFILES_PER_PAGE
+        const endIndex = startIndex + PROFILES_PER_PAGE
+        const paginatedData = data.slice(startIndex, endIndex)
+
         if (resetProfiles) {
-          setProfiles(data)
+          setProfiles(paginatedData)
         } else {
-          setProfiles((prev) => [...prev, ...data])
+          setProfiles((prev) => [...prev, ...paginatedData])
         }
-        setHasMore(data.length === PROFILES_PER_PAGE)
+        setHasMore(endIndex < data.length)
       }
     } catch (error) {
       console.error('Error fetching profiles:', error)

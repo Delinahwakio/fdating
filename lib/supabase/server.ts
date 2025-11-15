@@ -32,6 +32,14 @@ export async function createClient() {
           }
         },
       },
+      db: {
+        schema: 'public',
+      },
+      global: {
+        headers: {
+          'x-connection-pool': 'true',
+        },
+      },
     }
   )
 }

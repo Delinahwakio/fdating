@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { FICTIONAL_PROFILE_BLUR, imageSizes } from '@/lib/utils/imageOptimization'
 
 interface ProfileCarouselProps {
   images: string[]
@@ -35,8 +36,10 @@ export const ProfileCarousel = ({ images, alt }: ProfileCarouselProps) => {
         alt={`${alt} - Image ${currentIndex + 1}`}
         fill
         className="object-cover"
-        sizes="(max-width: 768px) 100vw, 50vw"
+        sizes={imageSizes.profileDetail}
         priority={currentIndex === 0}
+        placeholder="blur"
+        blurDataURL={FICTIONAL_PROFILE_BLUR}
       />
 
       {images.length > 1 && (

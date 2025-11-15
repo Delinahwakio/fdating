@@ -100,6 +100,9 @@ export default function FictionalProfilesPage() {
 
       if (error) throw error
 
+      // Invalidate cache
+      await fetch('/api/fictional-profiles/invalidate', { method: 'POST' })
+
       toast.success('Profile deactivated successfully')
       fetchProfiles()
     } catch (error: any) {
@@ -115,6 +118,9 @@ export default function FictionalProfilesPage() {
         .eq('id', profileId)
 
       if (error) throw error
+
+      // Invalidate cache
+      await fetch('/api/fictional-profiles/invalidate', { method: 'POST' })
 
       toast.success('Profile activated successfully')
       fetchProfiles()

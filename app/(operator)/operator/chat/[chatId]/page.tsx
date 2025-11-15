@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ThreePanelChat, ProfilePanel, OperatorChatInterface } from '@/components/operator'
+import dynamic from 'next/dynamic'
 import { IdleWarning } from '@/components/operator/IdleWarning'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { useAuth } from '@/lib/contexts/AuthContext'
@@ -10,6 +10,29 @@ import { useIdleDetection } from '@/lib/hooks/useIdleDetection'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 import { RealUser, FictionalUser, Chat, Message } from '@/types/database'
+
+// Code splitting: Dynamically import heavy operator chat components
+const ThreePanelChat = dynamic(
+  () => import('@/components/operator').then(mod => ({ default: mod.ThreePanelChat })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-full bg-[#0F0F23]">
+        <LoadingSpinner />
+      </div>
+    ),
+    ssr: false
+  }
+)
+
+const ProfilePanel = dynamic(
+  () => import('@/components/operator').then(mod => ({ default: mod.ProfilePanel })),
+  { ssr: false }
+)
+
+const OperatorChatInterface = dynamic(
+  () => import('@/components/operator').then(mod => ({ default: mod.OperatorChatInterface })),
+  { ssr: false }
+)
 
 interface ChatData extends Chat {
   real_user: RealUser

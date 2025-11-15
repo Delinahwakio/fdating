@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/lib/contexts/AuthContext'
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -21,9 +22,11 @@ export default function RootLayout({
         <script src="https://js.paystack.co/v1/inline.js" async></script>
       </head>
       <body className={inter.className}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

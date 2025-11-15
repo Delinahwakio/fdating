@@ -1,7 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { withRateLimit, RateLimitConfigs } from '@/lib/utils/rateLimit'
+import { errorHandler, ErrorTypes, assertExists } from '@/lib/utils/errors'
+import { validateAndSanitizeMessage } from '@/lib/utils/validation'
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerClient()
     
@@ -9,28 +12,26 @@ export async function POST(request: Request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      throw ErrorTypes.UNAUTHORIZED()
     }
+
+    // Apply rate limiting (30 messages per minute)
+    await withRateLimit(request, RateLimitConfigs.MESSAGE, user.id)
 
     const { chatId, content } = await request.json()
 
     // Validate input
     if (!chatId || !content) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+      throw ErrorTypes.VALIDATION_ERROR('Missing required fields: chatId or content')
     }
 
-    if (content.length === 0 || content.length > 5000) {
-      return NextResponse.json(
-        { error: 'Message content must be between 1 and 5000 characters' },
-        { status: 400 }
-      )
+    // Validate and sanitize message content
+    const validation = validateAndSanitizeMessage(content)
+    if (!validation.isValid) {
+      throw ErrorTypes.VALIDATION_ERROR(validation.error!)
     }
+
+    const trimmedContent = validation.sanitized!
 
     // Verify operator is assigned to this chat
     const { data: chat, error: chatError } = await supabase
@@ -40,24 +41,17 @@ export async function POST(request: Request) {
       .single()
 
     if (chatError) {
-      return NextResponse.json(
-        { error: 'Chat not found' },
-        { status: 404 }
-      )
+      throw ErrorTypes.DATABASE_ERROR('Failed to fetch chat')
     }
+    
+    assertExists(chat, 'Chat')
 
     if (chat.assigned_operator_id !== user.id) {
-      return NextResponse.json(
-        { error: 'You are not assigned to this chat' },
-        { status: 403 }
-      )
+      throw ErrorTypes.FORBIDDEN('You are not assigned to this chat')
     }
 
     if (!chat.is_active) {
-      return NextResponse.json(
-        { error: 'Chat is not active' },
-        { status: 400 }
-      )
+      throw ErrorTypes.VALIDATION_ERROR('Chat is not active')
     }
 
     // Insert message as fictional user
@@ -66,7 +60,7 @@ export async function POST(request: Request) {
       .insert({
         chat_id: chatId,
         sender_type: 'fictional',
-        content: content.trim(),
+        content: trimmedContent,
         handled_by_operator_id: user.id,
         is_free_message: false
       })
@@ -74,11 +68,7 @@ export async function POST(request: Request) {
       .single()
 
     if (messageError) {
-      console.error('Error inserting message:', messageError)
-      return NextResponse.json(
-        { error: 'Failed to send message' },
-        { status: 500 }
-      )
+      throw ErrorTypes.DATABASE_ERROR('Failed to send message')
     }
 
     // Update chat last_message_at timestamp
@@ -117,10 +107,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ message }, { status: 201 })
   } catch (error) {
-    console.error('Unexpected error in operator message route:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return errorHandler(error)
   }
 }

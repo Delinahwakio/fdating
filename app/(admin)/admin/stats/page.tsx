@@ -1,10 +1,60 @@
 'use client'
 
 import { useState } from 'react'
-import { PlatformStats } from '@/components/admin/PlatformStats'
-import { OperatorPerformanceTable } from '@/components/admin/OperatorPerformanceTable'
-import { AnalyticsCharts } from '@/components/admin/AnalyticsCharts'
+import dynamic from 'next/dynamic'
 import { GlassCard } from '@/components/shared/GlassCard'
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
+
+// Code splitting: Dynamically import heavy analytics components
+const PlatformStats = dynamic(
+  () => import('@/components/admin/PlatformStats').then(mod => ({ default: mod.PlatformStats })),
+  {
+    loading: () => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[1, 2, 3, 4].map(i => (
+          <GlassCard key={i} className="p-6">
+            <div className="flex items-center justify-center h-24">
+              <LoadingSpinner />
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+    ),
+    ssr: false
+  }
+)
+
+const OperatorPerformanceTable = dynamic(
+  () => import('@/components/admin/OperatorPerformanceTable').then(mod => ({ default: mod.OperatorPerformanceTable })),
+  {
+    loading: () => (
+      <GlassCard className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <LoadingSpinner />
+        </div>
+      </GlassCard>
+    ),
+    ssr: false
+  }
+)
+
+const AnalyticsCharts = dynamic(
+  () => import('@/components/admin/AnalyticsCharts').then(mod => ({ default: mod.AnalyticsCharts })),
+  {
+    loading: () => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[1, 2, 3].map(i => (
+          <GlassCard key={i} className="p-6">
+            <div className="flex items-center justify-center h-64">
+              <LoadingSpinner />
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+    ),
+    ssr: false
+  }
+)
 
 type DateRange = 'today' | 'week' | 'month' | 'year' | 'all'
 

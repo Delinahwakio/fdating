@@ -8,7 +8,13 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest --run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:deploy": "bash scripts/deploy-migrations.sh",
+    "db:deploy:win": "powershell -ExecutionPolicy Bypass -File scripts/deploy-migrations.ps1",
+    "db:verify": "bash scripts/verify-database.sh",
+    "db:verify:win": "powershell -ExecutionPolicy Bypass -File scripts/verify-database.ps1",
+    "db:status": "supabase migration list",
+    "db:diff": "supabase db diff"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.10.0",

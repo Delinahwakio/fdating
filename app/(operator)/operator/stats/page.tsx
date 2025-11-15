@@ -1,12 +1,38 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { useAuth } from '@/lib/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
-import { OperatorStatsDisplay, OperatorStatsChart } from '@/components/operator'
-import type { OperatorStats } from '@/types/database'
+
+// Code splitting: Dynamically import chart components
+const OperatorStatsDisplay = dynamic(
+  () => import('@/components/operator').then(mod => ({ default: mod.OperatorStatsDisplay })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center p-8">
+        <LoadingSpinner />
+      </div>
+    ),
+    ssr: false
+  }
+)
+
+const OperatorStatsChart = dynamic(
+  () => import('@/components/operator').then(mod => ({ default: mod.OperatorStatsChart })),
+  {
+    loading: () => (
+      <GlassCard className="p-8">
+        <div className="flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      </GlassCard>
+    ),
+    ssr: false
+  }
+)
 
 interface PerformanceStats {
   total_messages: number

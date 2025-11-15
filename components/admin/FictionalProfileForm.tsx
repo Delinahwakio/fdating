@@ -179,12 +179,18 @@ export const FictionalProfileForm = ({
 
         if (error) throw error
 
+        // Invalidate cache
+        await fetch('/api/fictional-profiles/invalidate', { method: 'POST' })
+
         toast.success('Profile updated successfully')
       } else {
         // Create new profile
         const { error } = await supabase.from('fictional_users').insert(profileData)
 
         if (error) throw error
+
+        // Invalidate cache
+        await fetch('/api/fictional-profiles/invalidate', { method: 'POST' })
 
         toast.success('Profile created successfully')
       }
@@ -302,6 +308,9 @@ export const FictionalProfileForm = ({
                     fill
                     className="object-cover"
                     sizes="200px"
+                    loading={index < 3 ? undefined : 'lazy'}
+                    placeholder="blur"
+                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJncmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMkQxQjRFO3N0b3Atb3BhY2l0eTowLjgiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMkQxQjRFO3N0b3Atb3BhY2l0eTowLjQiIC8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBmaWxsPSJ1cmwoI2dyYWQpIiAvPjwvc3ZnPg=="
                   />
                   <button
                     type="button"

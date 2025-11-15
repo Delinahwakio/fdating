@@ -1,0 +1,49 @@
+# Dependencies
+node_modules
+
+# Testing
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+vitest.config.ts
+vitest.setup.ts
+
+# Documentation
+*.md
+!README.md
+DEPLOYMENT.md
+SETUP.md
+
+# Development files
+.env.local
+.env*.local
+.vscode
+.idea
+
+# Git
+.git
+.gitignore
+
+# Supabase local
+supabase/.temp
+supabase/functions
+
+# Build artifacts (will be rebuilt)
+.next
+out
+dist
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+.kiro

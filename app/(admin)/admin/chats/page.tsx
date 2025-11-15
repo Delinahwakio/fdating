@@ -1,15 +1,50 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { AdminLayout } from '@/components/layouts/AdminLayout'
-import { ChatMonitorGrid } from '@/components/admin/ChatMonitorGrid'
-import { AdminChatDetail } from '@/components/admin/AdminChatDetail'
-import { ReassignChatModal } from '@/components/admin/ReassignChatModal'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Modal } from '@/components/shared/Modal'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 import { Chat, Operator, RealUser, FictionalUser } from '@/types/database'
+
+// Code splitting: Dynamically import heavy chat monitoring components
+const ChatMonitorGrid = dynamic(
+  () => import('@/components/admin/ChatMonitorGrid').then(mod => ({ default: mod.ChatMonitorGrid })),
+  {
+    loading: () => (
+      <div className="flex justify-center items-center py-20">
+        <LoadingSpinner />
+      </div>
+    ),
+    ssr: false
+  }
+)
+
+const AdminChatDetail = dynamic(
+  () => import('@/components/admin/AdminChatDetail').then(mod => ({ default: mod.AdminChatDetail })),
+  {
+    loading: () => (
+      <div className="flex justify-center items-center p-8">
+        <LoadingSpinner />
+      </div>
+    ),
+    ssr: false
+  }
+)
+
+const ReassignChatModal = dynamic(
+  () => import('@/components/admin/ReassignChatModal').then(mod => ({ default: mod.ReassignChatModal })),
+  {
+    loading: () => (
+      <div className="flex justify-center items-center p-8">
+        <LoadingSpinner />
+      </div>
+    ),
+    ssr: false
+  }
+)
 
 interface ChatWithDetails extends Chat {
   real_user: RealUser

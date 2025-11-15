@@ -1,6 +1,20 @@
 import { redirect } from 'next/navigation'
 import { createClient as createServerClient } from '@/lib/supabase/server'
-import { ChatInterface } from '@/components/real-user/ChatInterface'
+import dynamic from 'next/dynamic'
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
+
+// Code splitting: Dynamically import ChatInterface
+const ChatInterface = dynamic(
+  () => import('@/components/real-user/ChatInterface').then(mod => ({ default: mod.ChatInterface })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-full">
+        <LoadingSpinner />
+      </div>
+    ),
+    ssr: false // Chat requires client-side WebSocket
+  }
+)
 
 export default async function ChatPage({ params }: { params: { chatId: string } }) {
   const supabase = await createServerClient()

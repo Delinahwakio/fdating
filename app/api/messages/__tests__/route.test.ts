@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { NextRequest } from 'next/server'
 import { POST } from '../route'
 
 // Mock Supabase server client
@@ -13,6 +14,30 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => Promise.resolve(mockSupabaseClient))
 }))
 
+// Mock rate limiting
+vi.mock('@/lib/utils/rateLimit', () => ({
+  withRateLimit: vi.fn().mockResolvedValue(undefined),
+  RateLimitConfigs: {
+    MESSAGE: { interval: 60000, maxRequests: 30 }
+  }
+}))
+
+// Mock validation
+vi.mock('@/lib/utils/validation', () => ({
+  validateAndSanitizeMessage: vi.fn((content: string) => ({
+    isValid: true,
+    sanitized: content.trim()
+  }))
+}))
+
+// Helper to create NextRequest
+function createNextRequest(url: string, options: RequestInit): NextRequest {
+  return new NextRequest(url, {
+    ...options,
+    signal: options.signal || undefined
+  } as any)
+}
+
 describe('Messages API - Credit Deduction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -24,6 +49,16 @@ describe('Messages API - Credit Deduction', () => {
       data: { user: { id: 'user-123' } },
       error: null
     })
+
+    // Mock platform config
+    const configMock = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { value: '3' },
+        error: null
+      })
+    }
 
     // Mock chat lookup
     const chatMock = {
@@ -53,7 +88,7 @@ describe('Messages API - Credit Deduction', () => {
     }
 
     // Mock chat update
-    const updateMock = {
+    const chatUpdateMock = {
       update: vi.fn().mockReturnThis(),
       eq: vi.fn().mockResolvedValue({ error: null })
     }
@@ -68,18 +103,20 @@ describe('Messages API - Credit Deduction', () => {
       })
     }
 
+    let fromCallCount = 0
     mockSupabaseClient.from.mockImplementation((table: string) => {
-      if (table === 'chats') return chatMock
+      fromCallCount++
+      if (table === 'chats') return fromCallCount === 1 ? chatMock : chatUpdateMock
+      if (table === 'platform_config') return configMock
       if (table === 'messages') {
         // First call is for count, second is for insert
-        const callCount = mockSupabaseClient.from.mock.calls.filter((c: any) => c[0] === 'messages').length
-        return callCount === 1 ? countMock : insertMock
+        return fromCallCount === 3 ? countMock : insertMock
       }
       if (table === 'real_users') return userMock
       return {}
     })
 
-    const request = new Request('http://localhost/api/messages', {
+    const request = createNextRequest('http://localhost/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -102,6 +139,16 @@ describe('Messages API - Credit Deduction', () => {
       data: { user: { id: 'user-123' } },
       error: null
     })
+
+    // Mock platform config
+    const configMock = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { value: '3' },
+        error: null
+      })
+    }
 
     // Mock chat lookup
     const chatMock = {
@@ -152,22 +199,31 @@ describe('Messages API - Credit Deduction', () => {
       eq: vi.fn().mockResolvedValue({ error: null })
     }
 
+    // Mock final user credits fetch
+    const userFinalMock = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { credits: 9 },
+        error: null
+      })
+    }
+
     let fromCallCount = 0
     mockSupabaseClient.from.mockImplementation((table: string) => {
       fromCallCount++
-      if (table === 'chats') {
-        return fromCallCount === 1 ? chatMock : chatUpdateMock
-      }
-      if (table === 'messages') {
-        return fromCallCount === 2 ? countMock : insertMock
-      }
+      if (table === 'chats') return fromCallCount === 1 ? chatMock : chatUpdateMock
+      if (table === 'platform_config') return configMock
+      if (table === 'messages') return fromCallCount === 3 ? countMock : insertMock
       if (table === 'real_users') {
-        return fromCallCount === 3 ? userSelectMock : fromCallCount === 4 ? userUpdateMock : userSelectMock
+        if (fromCallCount === 4) return userSelectMock
+        if (fromCallCount === 5) return userUpdateMock
+        return userFinalMock
       }
       return {}
     })
 
-    const request = new Request('http://localhost/api/messages', {
+    const request = createNextRequest('http://localhost/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -191,6 +247,16 @@ describe('Messages API - Credit Deduction', () => {
       data: { user: { id: 'user-123' } },
       error: null
     })
+
+    // Mock platform config
+    const configMock = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { value: '3' },
+        error: null
+      })
+    }
 
     // Mock chat lookup
     const chatMock = {
@@ -219,14 +285,17 @@ describe('Messages API - Credit Deduction', () => {
       })
     }
 
+    let fromCallCount = 0
     mockSupabaseClient.from.mockImplementation((table: string) => {
+      fromCallCount++
       if (table === 'chats') return chatMock
+      if (table === 'platform_config') return configMock
       if (table === 'messages') return countMock
       if (table === 'real_users') return userMock
       return {}
     })
 
-    const request = new Request('http://localhost/api/messages', {
+    const request = createNextRequest('http://localhost/api/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
