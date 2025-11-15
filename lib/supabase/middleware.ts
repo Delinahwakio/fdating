@@ -1,6 +1,45 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+type UserRole = 'real_user' | 'operator' | 'admin' | null
+
+async function getUserRole(supabase: any, userId: string): Promise<UserRole> {
+  // Check if user is an admin
+  const { data: adminData } = await supabase
+    .from('admins')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (adminData) {
+    return 'admin'
+  }
+
+  // Check if user is an operator
+  const { data: operatorData } = await supabase
+    .from('operators')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (operatorData) {
+    return 'operator'
+  }
+
+  // Check if user is a real user
+  const { data: realUserData } = await supabase
+    .from('real_users')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (realUserData) {
+    return 'real_user'
+  }
+
+  return null
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -54,7 +93,59 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const pathname = request.nextUrl.pathname
+
+  // Public routes that don't require authentication
+  const publicRoutes = ['/', '/get-started', '/admin-login', '/op-login']
+  const isPublicRoute = publicRoutes.includes(pathname)
+
+  // Protected route patterns
+  const isRealUserRoute = pathname.startsWith('/discover') || 
+                          pathname.startsWith('/profile') || 
+                          pathname.startsWith('/chat') || 
+                          pathname.startsWith('/favorites') || 
+                          pathname.startsWith('/me') || 
+                          pathname.startsWith('/credits')
+  
+  const isOperatorRoute = pathname.startsWith('/operator')
+  const isAdminRoute = pathname.startsWith('/admin')
+
+  // If user is not authenticated and trying to access protected route
+  if (!user && !isPublicRoute) {
+    const redirectUrl = new URL('/', request.url)
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  // If user is authenticated, check role-based access
+  if (user) {
+    const role = await getUserRole(supabase, user.id)
+
+    // Redirect authenticated users away from public auth pages
+    if (isPublicRoute && pathname !== '/') {
+      if (role === 'admin') {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+      } else if (role === 'operator') {
+        return NextResponse.redirect(new URL('/operator/waiting', request.url))
+      } else if (role === 'real_user') {
+        return NextResponse.redirect(new URL('/discover', request.url))
+      }
+    }
+
+    // Enforce role-based access control
+    if (isRealUserRoute && role !== 'real_user') {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    if (isOperatorRoute && role !== 'operator') {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    if (isAdminRoute && role !== 'admin') {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+  }
 
   return response
 }

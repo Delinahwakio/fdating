@@ -403,3 +403,16 @@ export interface Database {
     }
   }
 }
+
+// Type exports for easier usage
+export type RealUser = Database['public']['Tables']['real_users']['Row']
+export type FictionalUser = Database['public']['Tables']['fictional_users']['Row']
+export type Chat = Database['public']['Tables']['chats']['Row']
+export type Message = Database['public']['Tables']['messages']['Row']
+export type Operator = Database['public']['Tables']['operators']['Row']
+export type Admin = Database['public']['Tables']['admins']['Row']
+export type Favorite = Database['public']['Tables']['favorites']['Row']
+export type Transaction = Database['public']['Tables']['transactions']['Row']
+export type OperatorStats = Database['public']['Tables']['operator_stats']['Row']
+export type OperatorActivity = Database['public']['Tables']['operator_activity']['Row']
+export type ChatAssignment = Database['public']['Tables']['chat_assignments']['Row']
