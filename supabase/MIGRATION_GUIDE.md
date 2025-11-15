@@ -19,6 +19,7 @@ Migrations are located in `supabase/migrations/` and must be run in order:
 5. **005_moderation_actions.sql** - Moderation logging table
 6. **006_moderation_rls.sql** - RLS policies for moderation
 7. **007_platform_configuration.sql** - Platform settings table
+8. **008_storage_buckets.sql** - Storage buckets for profile pictures
 
 ## Deployment Methods
 

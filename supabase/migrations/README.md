@@ -122,6 +122,37 @@ supabase db push
 # Or use Supabase Dashboard to run migrations manually
 ```
 
+### 005_moderation_actions.sql
+Creates moderation logging table for tracking admin actions:
+- **moderation_actions**: Records all moderation actions (warnings, suspensions, bans)
+- Tracks action type, reason, duration, and admin who performed action
+- Links to affected users for audit trail
+
+### 006_moderation_rls.sql
+Implements RLS policies for moderation system:
+- Admins can view and create moderation actions
+- Real users can view actions taken against them
+- Operators cannot access moderation data
+
+### 007_platform_configuration.sql
+Creates platform configuration table:
+- **platform_config**: Stores global platform settings
+- Configurable idle timeout, reassignment limits, credit pricing
+- Maintenance mode toggle
+- Single-row table with constraints
+
+### 008_storage_buckets.sql
+Creates Supabase Storage buckets for profile pictures:
+- **real-user-profiles**: Bucket for real user profile pictures (5MB limit)
+- **fictional-user-profiles**: Bucket for fictional user profile pictures (5MB limit)
+- RLS policies for upload/update/delete/read access
+- Automatic cleanup of old profile pictures
+- Helper functions for storage URL generation
+
+**Storage Structure:**
+- Real users: `real-user-profiles/{user_id}/profile.jpg`
+- Fictional users: `fictional-user-profiles/{fictional_user_id}/1.jpg`
+
 ## Migration Order
 
 Migrations must be applied in numerical order:
@@ -129,6 +160,10 @@ Migrations must be applied in numerical order:
 2. 002_indexes.sql - Adds performance indexes
 3. 003_rls_policies.sql - Enables RLS and creates policies
 4. 004_functions.sql - Creates business logic functions
+5. 005_moderation_actions.sql - Creates moderation logging
+6. 006_moderation_rls.sql - Adds moderation RLS policies
+7. 007_platform_configuration.sql - Creates platform config
+8. 008_storage_buckets.sql - Creates storage buckets
 
 ## Testing Migrations
 

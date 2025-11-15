@@ -25,8 +25,8 @@ export default function MaintenancePage() {
         </h1>
         
         <p className="text-gray-300 mb-6">
-          We're currently performing scheduled maintenance to improve your experience. 
-          We'll be back shortly!
+          We&apos;re currently performing scheduled maintenance to improve your experience. 
+          We&apos;ll be back shortly!
         </p>
         
         <p className="text-sm text-gray-400">
