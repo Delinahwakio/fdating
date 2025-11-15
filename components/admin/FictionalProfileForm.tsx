@@ -113,7 +113,7 @@ export const FictionalProfileForm = ({
 
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
-          .from('profile-pictures')
+          .from('fictional-user-profiles')
           .upload(filePath, file)
 
         if (error) {
@@ -124,7 +124,7 @@ export const FictionalProfileForm = ({
         // Get public URL
         const {
           data: { publicUrl },
-        } = supabase.storage.from('profile-pictures').getPublicUrl(filePath)
+        } = supabase.storage.from('fictional-user-profiles').getPublicUrl(filePath)
 
         uploadedUrls.push(publicUrl)
       }
