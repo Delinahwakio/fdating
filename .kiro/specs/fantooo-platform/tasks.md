@@ -12,29 +12,39 @@
   - Configure Tailwind with custom glassmorphism utilities and color palette
   - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5_
 
-- [-] 2. Set up Supabase database schema and security
+- [x] 2. Set up Supabase database schema and security
 
 
 
-- [ ] 2.1 Create database tables with constraints
+
+
+- [x] 2.1 Create database tables with constraints
+
+
   - Write migration for real_users, fictional_users, chats, messages, operators, admins, favorites, transactions, operator_stats, operator_activity, and chat_assignments tables
   - Add CHECK constraints for age, gender, credits, and message length
   - Add UNIQUE constraints for email, name, and chat combinations
   - _Requirements: 1.3, 1.4, 2.1, 4.2, 5.1, 18.1_
 
-- [ ] 2.2 Create database indexes for performance
+- [x] 2.2 Create database indexes for performance
+
+
   - Add indexes on frequently queried fields (real_user_id, fictional_user_id, chat_id, created_at)
   - Create composite indexes for assignment queue and active chats
   - _Requirements: 29.1, 29.2_
 
-- [ ] 2.3 Implement Row Level Security policies
+- [x] 2.3 Implement Row Level Security policies
+
+
   - Write RLS policies for real_users table (users view own, operators view assigned, admins view all)
   - Write RLS policies for messages table (users and operators view assigned chats, operators insert as fictional)
   - Write RLS policies for chats table (users view own, operators view assigned, admins manage all)
   - Write RLS policies for other tables with appropriate access controls
   - _Requirements: 18.1, 18.2_
 
-- [ ] 2.4 Create database functions for business logic
+- [x] 2.4 Create database functions for business logic
+
+
   - Write assign_chat_to_operator function with queue logic and locking
   - Write release_and_reassign_chat function for idle timeout handling
   - Write get_available_fictional_profiles function with gender filtering

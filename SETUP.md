@@ -57,21 +57,32 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ## Step 4: Set Up Database Schema
 
-The database migrations are located in the `supabase/migrations/` directory. You'll need to run these migrations in your Supabase project:
+The database migrations are located in the `supabase/migrations/` directory. 
+
+**📖 For detailed setup instructions, see [supabase/SETUP_GUIDE.md](supabase/SETUP_GUIDE.md)**
+
+Quick setup:
 
 1. Go to your Supabase project dashboard
 2. Navigate to SQL Editor
 3. Run each migration file in order:
-   - `001_initial_schema.sql` - Creates all tables
-   - `002_rls_policies.sql` - Sets up Row Level Security
-   - `003_functions.sql` - Creates database functions
-   - `004_indexes.sql` - Adds performance indexes
+   - `001_initial_schema.sql` - Creates all tables with constraints
+   - `002_indexes.sql` - Adds performance indexes
+   - `003_rls_policies.sql` - Sets up Row Level Security policies
+   - `004_functions.sql` - Creates database functions and triggers
+4. Run `verify.sql` to confirm everything is set up correctly
 
 Alternatively, if you have the Supabase CLI installed:
 
 ```bash
-supabase db push
+# Start local Supabase
+supabase start
+
+# Apply all migrations
+supabase db reset
 ```
+
+**Important:** You must create an initial admin user after running migrations. See the [SETUP_GUIDE.md](supabase/SETUP_GUIDE.md) for instructions.
 
 ## Step 5: Configure Paystack
 
