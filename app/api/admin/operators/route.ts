@@ -15,12 +15,12 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: Request) {
   try {
-    const { name, email } = await request.json()
+    const { name, email, password } = await request.json()
 
     // Validate input
-    if (!name || !email) {
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { error: 'Name and email are required' },
+        { error: 'Name, email, and password are required' },
         { status: 400 }
       )
     }
@@ -39,6 +39,13 @@ export async function POST(request: Request) {
       )
     }
 
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters' },
+        { status: 400 }
+      )
+    }
+
     // Check if email already exists
     const { data: existingOperator } = await supabaseAdmin
       .from('operators')
@@ -53,33 +60,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // Generate a secure random password
-    const generatePassword = () => {
-      const length = 12
-      const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
-      let password = ''
-      
-      // Ensure at least one of each required character type
-      password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
-      password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
-      password += '0123456789'[Math.floor(Math.random() * 10)]
-      password += '!@#$%^&*'[Math.floor(Math.random() * 8)]
-      
-      // Fill the rest randomly
-      for (let i = password.length; i < length; i++) {
-        password += charset[Math.floor(Math.random() * charset.length)]
-      }
-      
-      // Shuffle the password
-      return password.split('').sort(() => Math.random() - 0.5).join('')
-    }
-
-    const temporaryPassword = generatePassword()
-
-    // Create auth user
+    // Create auth user with provided password
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password: temporaryPassword,
+      password,
       email_confirm: true,
       user_metadata: {
         name,
@@ -133,39 +117,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // Send email with login credentials
-    // Note: In production, you should use a proper email service
-    // For now, we'll use Supabase's built-in email functionality
-    try {
-      // Send a password reset email instead of sending the password directly
-      // This is more secure as the operator will set their own password
-      await supabaseAdmin.auth.admin.generateLink({
-        type: 'magiclink',
-        email,
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/op-login`,
-        },
-      })
-
-      // In a production environment, you would send a custom email here
-      // with the login instructions and the magic link
-      console.log('Login credentials for operator:', {
-        email,
-        temporaryPassword,
-        note: 'In production, send this via email service',
-      })
-    } catch (emailError) {
-      console.error('Email sending error:', emailError)
-      // Don't fail the request if email fails
-    }
-
     return NextResponse.json(
       {
         message: 'Operator created successfully',
         operator,
-        // In development, return the password so admin can share it
-        // Remove this in production
-        ...(process.env.NODE_ENV === 'development' && { temporaryPassword }),
       },
       { status: 201 }
     )

@@ -2,8 +2,12 @@
 
 import { ReactNode, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils/cn'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/contexts/AuthContext'
+
+function cn(...classes: (string | boolean | undefined)[]) {
+  return classes.filter(Boolean).join(' ')
+}
 
 interface AdminLayoutProps {
   children: ReactNode
@@ -21,7 +25,18 @@ const navItems = [
 
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const pathname = usePathname()
+  const router = useRouter()
+  const { signOut } = useAuth()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      router.push('/')
+    } catch (error) {
+      console.error('Error logging out:', error)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-primary-bg flex">
@@ -77,7 +92,10 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
           {/* Footer */}
           <div className="p-4 border-t border-white/10">
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-glass-sm text-gray-300 hover:bg-glass-light hover:text-white transition-all">
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-glass-sm text-gray-300 hover:bg-glass-light hover:text-white transition-all"
+            >
               <span className="text-xl">🚪</span>
               <span className="font-medium">Logout</span>
             </button>

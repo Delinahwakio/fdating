@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { AdminLayout } from '@/components/layouts/AdminLayout'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Modal } from '@/components/shared/Modal'
 import { createClient } from '@/lib/supabase/client'
@@ -230,7 +229,6 @@ export default function ChatsPage() {
   }
 
   return (
-    <AdminLayout>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -279,6 +277,5 @@ export default function ChatsPage() {
           )}
         </Modal>
       </div>
-    </AdminLayout>
   )
 }

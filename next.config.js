@@ -8,6 +8,12 @@ const nextConfig = {
       },
     ],
   },
+  // Faster development builds
+  swcMinify: true,
+  // Optimize for faster rebuilds
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts'],
+  },
 }
 
 module.exports = nextConfig

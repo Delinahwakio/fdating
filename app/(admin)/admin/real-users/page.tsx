@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AdminLayout } from '@/components/layouts/AdminLayout'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { GlassButton } from '@/components/shared/GlassButton'
 import { GlassInput } from '@/components/shared/GlassInput'
@@ -184,7 +183,6 @@ export default function RealUsersPage() {
   const statusCounts = getStatusCounts()
 
   return (
-    <AdminLayout>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -297,6 +295,5 @@ export default function RealUsersPage() {
           )}
         </Modal>
       </div>
-    </AdminLayout>
   )
 }

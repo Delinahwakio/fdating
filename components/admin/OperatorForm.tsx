@@ -16,9 +16,35 @@ export const OperatorForm = ({ onSuccess, onCancel }: OperatorFormProps) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
   })
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const generatePassword = () => {
+    const length = 16
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
+    let password = ''
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length))
+    }
+    setFormData((prev) => ({ ...prev, password }))
+    setErrors((prev) => ({ ...prev, password: '' }))
+    toast.success('Password generated!')
+  }
+
+  const copyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(formData.password)
+      setCopied(true)
+      toast.success('Password copied to clipboard!')
+      setTimeout(() => setCopied(false), 2000)
+    } catch (error) {
+      toast.error('Failed to copy password')
+    }
+  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -33,6 +59,12 @@ export const OperatorForm = ({ onSuccess, onCancel }: OperatorFormProps) => {
       newErrors.email = 'Email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format'
+    }
+
+    if (!formData.password.trim()) {
+      newErrors.password = 'Password is required'
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
     }
 
     setErrors(newErrors)
@@ -82,8 +114,7 @@ export const OperatorForm = ({ onSuccess, onCancel }: OperatorFormProps) => {
     <GlassCard className="p-6 max-w-md w-full">
       <h2 className="text-2xl font-bold text-gray-50 mb-2">Create New Operator</h2>
       <p className="text-gray-400 text-sm mb-6">
-        Create a new operator account. Login credentials will be automatically generated and sent
-        to their email.
+        Create a new operator account. Generate a secure password or enter your own.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -121,17 +152,65 @@ export const OperatorForm = ({ onSuccess, onCancel }: OperatorFormProps) => {
           {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email}</p>}
         </div>
 
+        {/* Password Field */}
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+            Password *
+          </label>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <GlassInput
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => handleChange('password', e.target.value)}
+                  placeholder="Enter or generate password"
+                  disabled={loading}
+                  className={errors.password ? 'border-red-500' : ''}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
+              <GlassButton
+                type="button"
+                onClick={generatePassword}
+                disabled={loading}
+                variant="secondary"
+                className="px-4"
+              >
+                🎲 Generate
+              </GlassButton>
+            </div>
+            {formData.password && (
+              <GlassButton
+                type="button"
+                onClick={copyPassword}
+                disabled={loading}
+                variant="secondary"
+                className="w-full"
+              >
+                {copied ? '✓ Copied!' : '📋 Copy Password'}
+              </GlassButton>
+            )}
+          </div>
+          {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password}</p>}
+        </div>
+
         {/* Info Box */}
-        <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-glass-sm">
+        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-glass-sm">
           <div className="flex gap-2">
-            <span className="text-blue-400">ℹ️</span>
-            <div className="text-sm text-blue-300">
-              <p className="font-medium mb-1">What happens next:</p>
-              <ul className="list-disc list-inside space-y-1 text-blue-400">
-                <li>A secure password will be generated</li>
-                <li>Login credentials will be sent to the email</li>
-                <li>Operator can change password after first login</li>
-              </ul>
+            <span className="text-amber-400">⚠️</span>
+            <div className="text-sm text-amber-300">
+              <p className="font-medium mb-1">Important:</p>
+              <p className="text-amber-400">
+                Copy the password and share it with the operator securely. They won't receive it via email.
+              </p>
             </div>
           </div>
         </div>
