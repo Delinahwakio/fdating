@@ -18,6 +18,11 @@ export default function Home() {
               Get Started
             </GlassButton>
           </Link>
+          <Link href="/login">
+            <GlassButton variant="secondary" className="w-full sm:w-auto">
+              Login
+            </GlassButton>
+          </Link>
           <Link href="/op-login">
             <GlassButton variant="secondary" className="w-full sm:w-auto">
               Operator Login

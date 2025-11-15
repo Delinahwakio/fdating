@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('admins')
         .select('id')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
       if (adminData) {
         setRole('admin')
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('operators')
         .select('id, is_active')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
       if (operatorData) {
         // Only set role if account is active
@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('real_users')
         .select('id, is_active')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
       if (realUserData) {
         // Only set role if account is active

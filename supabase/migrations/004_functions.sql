@@ -7,7 +7,10 @@
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION assign_chat_to_operator(p_operator_id UUID)
-RETURNS UUID AS $$
+RETURNS UUID 
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   v_chat_id UUID;
   v_operator_active BOOLEAN;

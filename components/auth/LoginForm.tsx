@@ -10,7 +10,7 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 
 interface LoginFormProps {
   title: string
-  role: 'operator' | 'admin'
+  role: 'operator' | 'admin' | 'user'
   redirectPath: string
 }
 

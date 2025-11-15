@@ -43,11 +43,14 @@ export default function OperatorWaitingPage() {
         setIsAvailable(operator?.is_available || false)
 
         // Get waiting chats count
-        const { count, error: countError } = await supabase
+        const { data: chats, count, error: countError } = await supabase
           .from('chats')
           .select('*', { count: 'exact', head: true })
           .is('assigned_operator_id', null)
           .eq('is_active', true)
+
+        console.log('Fetched chats:', chats) // Debugging log
+        console.log('Count of waiting chats:', count) // Debugging log
 
         if (countError) throw countError
 
@@ -116,6 +119,57 @@ export default function OperatorWaitingPage() {
       supabase.removeChannel(channel)
     }
   }, [user, supabase, router])
+
+  // Fetch assigned chats for the operator
+  useEffect(() => {
+    if (!user) return
+
+    const fetchAssignedChats = async () => {
+      try {
+        const { data: assignedChats, error } = await supabase
+          .from('chats')
+          .select('*')
+          .eq('assigned_operator_id', user.id)
+          .eq('is_active', true)
+
+        if (error) {
+          console.error('Error fetching assigned chats:', error)
+        } else {
+          console.log('Assigned chats:', assignedChats)
+        }
+      } catch (error) {
+        console.error('Unexpected error fetching assigned chats:', error)
+      }
+    }
+
+    fetchAssignedChats()
+  }, [user, supabase])
+
+  // Fetch unassigned chats for debugging
+  useEffect(() => {
+    if (!user) return
+
+    const fetchUnassignedChats = async () => {
+      try {
+        const { data: unassignedChats, count, error } = await supabase
+          .from('chats')
+          .select('*', { count: 'exact', head: true })
+          .is('assigned_operator_id', null)
+          .eq('is_active', true)
+
+        console.log('Unassigned chats query result:', unassignedChats) // Log query result
+        console.log('Unassigned chats count:', count) // Log count
+
+        if (error) {
+          console.error('Error fetching unassigned chats:', error)
+        }
+      } catch (error) {
+        console.error('Unexpected error fetching unassigned chats:', error)
+      }
+    }
+
+    fetchUnassignedChats()
+  }, [user, supabase])
 
   // Handle availability toggle
   const handleToggleAvailability = async () => {
