@@ -367,6 +367,64 @@ export interface Database {
           created_at?: string
         }
       }
+      message_edits: {
+        Row: {
+          id: string
+          message_id: string
+          admin_id: string | null
+          original_content: string
+          new_content: string
+          edited_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          admin_id?: string | null
+          original_content: string
+          new_content: string
+          edited_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          admin_id?: string | null
+          original_content?: string
+          new_content?: string
+          edited_at?: string
+          created_at?: string
+        }
+      }
+      moderation_actions: {
+        Row: {
+          id: string
+          real_user_id: string
+          admin_id: string
+          action_type: 'block' | 'unblock' | 'suspend' | 'warning'
+          reason: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          real_user_id: string
+          admin_id: string
+          action_type: 'block' | 'unblock' | 'suspend' | 'warning'
+          reason?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          real_user_id?: string
+          admin_id?: string
+          action_type?: 'block' | 'unblock' | 'suspend' | 'warning'
+          reason?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -416,3 +474,5 @@ export type Transaction = Database['public']['Tables']['transactions']['Row']
 export type OperatorStats = Database['public']['Tables']['operator_stats']['Row']
 export type OperatorActivity = Database['public']['Tables']['operator_activity']['Row']
 export type ChatAssignment = Database['public']['Tables']['chat_assignments']['Row']
+export type MessageEdit = Database['public']['Tables']['message_edits']['Row']
+export type ModerationAction = Database['public']['Tables']['moderation_actions']['Row']

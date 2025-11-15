@@ -66,7 +66,7 @@ export const IdleWarning: FC<IdleWarningProps> = ({
             Idle Warning
           </h2>
           <p className="text-gray-300 mb-4">
-            You have been inactive for too long. This chat will be reassigned if you don't respond soon.
+            You have been inactive for too long. This chat will be reassigned if you don&apos;t respond soon.
           </p>
 
           {/* Countdown Timer */}
@@ -84,7 +84,7 @@ export const IdleWarning: FC<IdleWarningProps> = ({
             onClick={onDismiss}
             className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 border-yellow-500/50"
           >
-            I'm Still Here
+            I am Still Here
           </GlassButton>
 
           <p className="text-xs text-gray-400 mt-4">

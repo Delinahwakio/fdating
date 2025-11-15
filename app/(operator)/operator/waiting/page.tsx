@@ -319,7 +319,7 @@ export default function OperatorWaitingPage() {
             </li>
             <li className="flex items-start">
               <span className="text-red-500 mr-2">•</span>
-              <span>When a chat is assigned, you'll receive a notification</span>
+              <span>When a chat is assigned, you&apos;ll receive a notification</span>
             </li>
             <li className="flex items-start">
               <span className="text-red-500 mr-2">•</span>

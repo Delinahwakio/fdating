@@ -56,6 +56,15 @@ export async function POST(request: Request) {
       )
     }
 
+    // Get free message count from configuration
+    const { data: freeMessageConfig } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'free_message_count')
+      .single()
+
+    const freeMessageCount = freeMessageConfig?.value ? parseInt(freeMessageConfig.value) : 3
+
     // Get message count for this chat (count messages sent by real user)
     const { count: messageCount, error: countError } = await supabase
       .from('messages')
@@ -71,7 +80,7 @@ export async function POST(request: Request) {
     }
 
     const currentMessageCount = messageCount || 0
-    const isFreeMessage = currentMessageCount < 3
+    const isFreeMessage = currentMessageCount < freeMessageCount
 
     // If not free, check and deduct credits
     if (!isFreeMessage) {

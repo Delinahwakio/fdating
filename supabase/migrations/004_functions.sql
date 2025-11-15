@@ -88,8 +88,18 @@ RETURNS BOOLEAN AS $$
 DECLARE
   v_previous_operator_id UUID;
   v_reassignment_count INTEGER;
-  v_max_reassignments INTEGER := 3;
+  v_max_reassignments INTEGER;
 BEGIN
+  -- Get max reassignments from configuration
+  SELECT (value)::INTEGER INTO v_max_reassignments
+  FROM platform_config
+  WHERE key = 'max_reassignments';
+  
+  -- Default to 3 if not found
+  IF v_max_reassignments IS NULL THEN
+    v_max_reassignments := 3;
+  END IF;
+
   -- Get current operator assignment
   SELECT assigned_operator_id INTO v_previous_operator_id
   FROM chats

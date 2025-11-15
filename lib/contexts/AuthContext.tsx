@@ -92,24 +92,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check if user is an operator
       const { data: operatorData } = await supabase
         .from('operators')
-        .select('id')
+        .select('id, is_active')
         .eq('id', userId)
         .single()
 
       if (operatorData) {
-        setRole('operator')
+        // Only set role if account is active
+        if (operatorData.is_active) {
+          setRole('operator')
+        } else {
+          setRole(null)
+        }
         return
       }
 
       // Check if user is a real user
       const { data: realUserData } = await supabase
         .from('real_users')
-        .select('id')
+        .select('id, is_active')
         .eq('id', userId)
         .single()
 
       if (realUserData) {
-        setRole('real_user')
+        // Only set role if account is active
+        if (realUserData.is_active) {
+          setRole('real_user')
+        } else {
+          setRole(null)
+        }
         return
       }
 
@@ -132,6 +142,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (data.user) {
+      // Check if the account is active before allowing login
+      const userId = data.user.id
+      
+      // Check operator status
+      const { data: operatorData } = await supabase
+        .from('operators')
+        .select('is_active')
+        .eq('id', userId)
+        .maybeSingle()
+      
+      if (operatorData && !operatorData.is_active) {
+        // Sign out the user immediately
+        await supabase.auth.signOut()
+        throw new Error('Your account has been deactivated. Please contact an administrator.')
+      }
+      
+      // Check real user status
+      const { data: realUserData } = await supabase
+        .from('real_users')
+        .select('is_active')
+        .eq('id', userId)
+        .maybeSingle()
+      
+      if (realUserData && !realUserData.is_active) {
+        // Sign out the user immediately
+        await supabase.auth.signOut()
+        throw new Error('Your account has been suspended. Please contact support.')
+      }
+      
       setUser(data.user)
       await detectUserRole(data.user.id)
     }

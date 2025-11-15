@@ -21,15 +21,24 @@ export async function GET(request: Request) {
 
     const supabase = await createClient()
     
-    // Calculate threshold time (5 minutes ago)
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    // Get idle timeout from configuration
+    const { data: idleTimeoutConfig } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'idle_timeout_minutes')
+      .single()
 
-    // Find chats that have been assigned for more than 5 minutes
+    const idleTimeoutMinutes = idleTimeoutConfig?.value ? parseInt(idleTimeoutConfig.value) : 5
+    
+    // Calculate threshold time
+    const idleThreshold = new Date(Date.now() - idleTimeoutMinutes * 60 * 1000).toISOString()
+
+    // Find chats that have been assigned for more than the configured timeout
     const { data: potentiallyIdleChats, error: chatsError } = await supabase
       .from('chats')
       .select('id, assigned_operator_id, assignment_time')
       .not('assigned_operator_id', 'is', null)
-      .lt('assignment_time', fiveMinutesAgo)
+      .lt('assignment_time', idleThreshold)
       .eq('is_active', true)
 
     if (chatsError) {
@@ -73,9 +82,9 @@ export async function GET(request: Request) {
           continue
         }
 
-        // If no activity record or activity is older than 5 minutes, reassign
+        // If no activity record or activity is older than the configured timeout, reassign
         const shouldReassign = !activity || 
-          new Date(activity.last_activity) < new Date(fiveMinutesAgo)
+          new Date(activity.last_activity) < new Date(idleThreshold)
 
         if (shouldReassign) {
           // Call the release_and_reassign_chat function

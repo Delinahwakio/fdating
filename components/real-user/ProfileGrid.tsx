@@ -67,7 +67,7 @@ export const ProfileGrid = ({ profiles, loading, hasMore, onLoadMore }: ProfileG
       
       {!hasMore && profiles.length > 0 && (
         <div className="text-center py-8">
-          <p className="text-gray-400">You've reached the end of the list</p>
+          <p className="text-gray-400">You&apos;ve reached the end of the list</p>
         </div>
       )}
     </>

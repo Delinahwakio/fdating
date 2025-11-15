@@ -29,6 +29,27 @@ export default function OperatorChatPage() {
   const [error, setError] = useState<string | null>(null)
   const [showIdleWarning, setShowIdleWarning] = useState(false)
   const [idleRemainingTime, setIdleRemainingTime] = useState(0)
+  const [idleTimeoutMinutes, setIdleTimeoutMinutes] = useState(5)
+
+  // Fetch idle timeout configuration
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const { data } = await supabase
+          .from('platform_config')
+          .select('value')
+          .eq('key', 'idle_timeout_minutes')
+          .single()
+        
+        if (data?.value) {
+          setIdleTimeoutMinutes(parseInt(data.value))
+        }
+      } catch (error) {
+        console.error('Error fetching idle timeout config:', error)
+      }
+    }
+    fetchConfig()
+  }, [supabase])
 
   // Idle detection callbacks
   const handleIdleWarning = useCallback(() => {
@@ -48,14 +69,17 @@ export default function OperatorChatPage() {
     setShowIdleWarning(false)
   }, [])
 
-  // Initialize idle detection
+  // Initialize idle detection with configurable timeout
+  const timeoutThreshold = idleTimeoutMinutes * 60 * 1000
+  const warningThreshold = Math.max((idleTimeoutMinutes - 1) * 60 * 1000, 60 * 1000) // 1 minute before timeout, minimum 1 minute
+  
   const { getIdleTime } = useIdleDetection({
     chatId: chatId || '',
     operatorId: user?.id || '',
     onWarning: handleIdleWarning,
     onTimeout: handleIdleTimeout,
-    warningThreshold: 4 * 60 * 1000, // 4 minutes
-    timeoutThreshold: 5 * 60 * 1000, // 5 minutes
+    warningThreshold,
+    timeoutThreshold,
     heartbeatInterval: 30 * 1000, // 30 seconds
     checkInterval: 10 * 1000 // 10 seconds
   })
@@ -66,8 +90,8 @@ export default function OperatorChatPage() {
 
     const interval = setInterval(() => {
       const idleTime = getIdleTime()
-      const timeoutThreshold = 5 * 60 * 1000
-      const remaining = timeoutThreshold - idleTime
+      const threshold = idleTimeoutMinutes * 60 * 1000
+      const remaining = threshold - idleTime
       
       if (remaining <= 0) {
         setIdleRemainingTime(0)

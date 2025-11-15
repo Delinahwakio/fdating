@@ -18,22 +18,30 @@ async function getUserRole(supabase: any, userId: string): Promise<UserRole> {
   // Check if user is an operator
   const { data: operatorData } = await supabase
     .from('operators')
-    .select('id')
+    .select('id, is_active')
     .eq('id', userId)
     .maybeSingle()
 
   if (operatorData) {
+    // Only return operator role if the account is active
+    if (!operatorData.is_active) {
+      return null // Deactivated operators cannot access the system
+    }
     return 'operator'
   }
 
   // Check if user is a real user
   const { data: realUserData } = await supabase
     .from('real_users')
-    .select('id')
+    .select('id, is_active')
     .eq('id', userId)
     .maybeSingle()
 
   if (realUserData) {
+    // Only return real_user role if the account is active
+    if (!realUserData.is_active) {
+      return null // Deactivated users cannot access the system
+    }
     return 'real_user'
   }
 
@@ -97,8 +105,37 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
+  // Check maintenance mode (except for admins and maintenance page itself)
+  if (pathname !== '/maintenance' && !pathname.startsWith('/admin')) {
+    const { data: maintenanceConfig } = await supabase
+      .from('platform_config')
+      .select('value')
+      .eq('key', 'maintenance_mode')
+      .maybeSingle()
+
+    const isMaintenanceMode = maintenanceConfig?.value === 'true' || maintenanceConfig?.value === true
+
+    if (isMaintenanceMode) {
+      // Check if user is admin
+      let isAdmin = false
+      if (user) {
+        const { data: adminData } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle()
+        isAdmin = !!adminData
+      }
+
+      // Redirect non-admin users to maintenance page
+      if (!isAdmin) {
+        return NextResponse.redirect(new URL('/maintenance', request.url))
+      }
+    }
+  }
+
   // Public routes that don't require authentication
-  const publicRoutes = ['/', '/get-started', '/admin-login', '/op-login']
+  const publicRoutes = ['/', '/get-started', '/admin-login', '/op-login', '/maintenance']
   const isPublicRoute = publicRoutes.includes(pathname)
 
   // Protected route patterns
