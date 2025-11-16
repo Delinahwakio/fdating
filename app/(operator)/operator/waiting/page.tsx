@@ -43,14 +43,11 @@ export default function OperatorWaitingPage() {
         setIsAvailable(operator?.is_available || false)
 
         // Get waiting chats count
-        const { data: chats, count, error: countError } = await supabase
+        const { count, error: countError } = await supabase
           .from('chats')
           .select('*', { count: 'exact', head: true })
           .is('assigned_operator_id', null)
           .eq('is_active', true)
-
-        console.log('Fetched chats:', chats) // Debugging log
-        console.log('Count of waiting chats:', count) // Debugging log
 
         if (countError) throw countError
 
@@ -99,10 +96,13 @@ export default function OperatorWaitingPage() {
           table: 'chats',
           filter: `assigned_operator_id=eq.${user.id}`
         },
-        (payload) => {
+        async (payload) => {
           // Chat assigned to this operator
           const chat = payload.new as any
-          if (chat.assigned_operator_id === user.id) {
+          const oldChat = payload.old as any
+          
+          // Only redirect if this is a new assignment (wasn't assigned before)
+          if (chat.assigned_operator_id === user.id && !oldChat?.assigned_operator_id) {
             setAssignmentNotification(chat.id)
             toast.success('New chat assigned!')
             
@@ -120,30 +120,41 @@ export default function OperatorWaitingPage() {
     }
   }, [user, supabase, router])
 
-  // Fetch assigned chats for the operator
+  // Check for already assigned chats and redirect if found
   useEffect(() => {
-    if (!user) return
+    if (!user || loading) return
 
-    const fetchAssignedChats = async () => {
+    const checkAssignedChats = async () => {
       try {
         const { data: assignedChats, error } = await supabase
           .from('chats')
-          .select('*')
+          .select('id')
           .eq('assigned_operator_id', user.id)
           .eq('is_active', true)
+          .order('assignment_time', { ascending: false })
+          .limit(1)
 
         if (error) {
           console.error('Error fetching assigned chats:', error)
-        } else {
-          console.log('Assigned chats:', assignedChats)
+          return
+        }
+
+        // If there's an assigned chat, redirect to it immediately
+        if (assignedChats && assignedChats.length > 0) {
+          const assignedChat = assignedChats[0]
+          setAssignmentNotification(assignedChat.id)
+          toast.success('You have an assigned chat!')
+          setTimeout(() => {
+            router.push(`/operator/chat/${assignedChat.id}`)
+          }, 1000)
         }
       } catch (error) {
         console.error('Unexpected error fetching assigned chats:', error)
       }
     }
 
-    fetchAssignedChats()
-  }, [user, supabase])
+    checkAssignedChats()
+  }, [user, supabase, router, loading])
 
   // Fetch unassigned chats for debugging
   useEffect(() => {
@@ -151,14 +162,11 @@ export default function OperatorWaitingPage() {
 
     const fetchUnassignedChats = async () => {
       try {
-        const { data: unassignedChats, count, error } = await supabase
+        const { count, error } = await supabase
           .from('chats')
           .select('*', { count: 'exact', head: true })
           .is('assigned_operator_id', null)
           .eq('is_active', true)
-
-        console.log('Unassigned chats query result:', unassignedChats) // Log query result
-        console.log('Unassigned chats count:', count) // Log count
 
         if (error) {
           console.error('Error fetching unassigned chats:', error)

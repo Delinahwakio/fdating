@@ -71,17 +71,31 @@ export async function POST(request: NextRequest) {
       throw ErrorTypes.DATABASE_ERROR('Failed to send message')
     }
 
-    // Update chat last_message_at timestamp
+    // After operator sends message, unassign the chat so operator can get new assignments
+    // The chat will become assignable again when real user sends another message
     const { error: updateError } = await supabase
       .from('chats')
       .update({ 
         last_message_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        assigned_operator_id: null, // Unassign after operator sends message
+        assignment_time: null
       })
       .eq('id', chatId)
 
     if (updateError) {
-      console.error('Error updating chat timestamp:', updateError)
+      console.error('Error updating chat:', updateError)
+    } else {
+      // Log the release
+      await supabase
+        .from('chat_assignments')
+        .update({
+          released_at: new Date().toISOString(),
+          release_reason: 'operator_sent_message'
+        })
+        .eq('chat_id', chatId)
+        .eq('operator_id', user.id)
+        .is('released_at', null)
     }
 
     // Update operator stats - increment total_messages

@@ -14,6 +14,8 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts'],
   },
+  // Development optimizations
+  reactStrictMode: true,
 }
 
 module.exports = nextConfig

@@ -56,12 +56,12 @@ export default async function ChatPage({ params }: { params: { chatId: string } 
     .single()
 
   return (
-    <div className="h-screen flex flex-col bg-[#0F0F23]">
+    <div className="fixed inset-0 flex flex-col bg-[#0F0F23]">
       {/* Chat Header */}
-      <div className="bg-[#1A1A2E]/80 backdrop-blur-sm border-b border-gray-700/50 p-4">
+      <div className="flex-shrink-0 bg-[#1A1A2E]/80 backdrop-blur-sm border-b border-gray-700/50 p-4 z-10">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
           <a
-            href="/discover"
+            href="/chats"
             className="text-gray-400 hover:text-gray-300 transition-colors"
           >
             ← Back
@@ -78,7 +78,7 @@ export default async function ChatPage({ params }: { params: { chatId: string } 
       </div>
 
       {/* Chat Interface */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ChatInterface
           chatId={params.chatId}
           fictionalUserId={chat.fictional_user_id}

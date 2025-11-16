@@ -47,23 +47,46 @@ export async function POST(request: Request) {
     }
 
     // Update or insert operator activity
-    const { error: upsertError } = await supabase
+    // First try to update existing record
+    const { data: existing, error: selectError } = await supabase
       .from('operator_activity')
-      .upsert({
-        chat_id: chatId,
-        operator_id: operatorId,
-        last_activity: new Date(lastActivity).toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'chat_id,operator_id'
-      })
+      .select('chat_id, operator_id')
+      .eq('chat_id', chatId)
+      .eq('operator_id', operatorId)
+      .single()
+
+    const lastActivityISO = new Date(lastActivity).toISOString()
+    const nowISO = new Date().toISOString()
+
+    let upsertError
+    if (existing) {
+      // Update existing record
+      const { error } = await supabase
+        .from('operator_activity')
+        .update({
+          last_activity: lastActivityISO,
+          updated_at: nowISO
+        })
+        .eq('chat_id', chatId)
+        .eq('operator_id', operatorId)
+      upsertError = error
+    } else {
+      // Insert new record
+      const { error } = await supabase
+        .from('operator_activity')
+        .insert({
+          chat_id: chatId,
+          operator_id: operatorId,
+          last_activity: lastActivityISO,
+          updated_at: nowISO
+        })
+      upsertError = error
+    }
 
     if (upsertError) {
       console.error('Error updating operator activity:', upsertError)
-      return NextResponse.json(
-        { error: 'Failed to update activity' },
-        { status: 500 }
-      )
+      // Don't fail the request if activity update fails - it's not critical
+      // Just log it and continue
     }
 
     return NextResponse.json({ success: true }, { status: 200 })

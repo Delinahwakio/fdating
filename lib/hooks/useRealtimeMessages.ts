@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Message } from '@/types/database'
 import { RealtimeChannel } from '@supabase/supabase-js'
@@ -27,7 +27,17 @@ export const useRealtimeMessages = ({
     error: null
   })
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
-  const supabase = createClient()
+  
+  // Memoize supabase client to avoid recreating it on every render
+  const supabase = useMemo(() => createClient(), [])
+  
+  // Use ref to store the callback to avoid dependency issues
+  const onNewMessageRef = useRef(onNewMessage)
+  
+  // Update ref when callback changes
+  useEffect(() => {
+    onNewMessageRef.current = onNewMessage
+  }, [onNewMessage])
 
   // Subscribe to new messages
   useEffect(() => {
@@ -37,7 +47,13 @@ export const useRealtimeMessages = ({
     const reconnectDelay = 1000 // Start with 1 second
 
     const setupSubscription = () => {
-      setConnectionState({ status: 'connecting', error: null })
+      setConnectionState((prev) => {
+        // Only update if not already connecting to avoid unnecessary re-renders
+        if (prev.status !== 'connecting') {
+          return { status: 'connecting', error: null }
+        }
+        return prev
+      })
 
       channel = supabase
         .channel(`chat:${chatId}`)
@@ -60,11 +76,18 @@ export const useRealtimeMessages = ({
               return [...prev, newMessage]
             })
 
-            if (onNewMessage) {
-              onNewMessage(newMessage)
+            // Call callback using ref to avoid dependency issues
+            if (onNewMessageRef.current) {
+              onNewMessageRef.current(newMessage)
             }
 
-            setConnectionState({ status: 'connected', error: null })
+            setConnectionState((prev) => {
+              // Only update if not already connected to avoid unnecessary re-renders
+              if (prev.status !== 'connected') {
+                return { status: 'connected', error: null }
+              }
+              return prev
+            })
           }
         )
         .on(
@@ -99,12 +122,22 @@ export const useRealtimeMessages = ({
         })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            setConnectionState({ status: 'connected', error: null })
+            setConnectionState((prev) => {
+              if (prev.status !== 'connected') {
+                return { status: 'connected', error: null }
+              }
+              return prev
+            })
             reconnectAttempts = 0
           } else if (status === 'CHANNEL_ERROR') {
-            setConnectionState({ 
-              status: 'disconnected', 
-              error: 'Connection error' 
+            setConnectionState((prev) => {
+              if (prev.status !== 'disconnected' || prev.error !== 'Connection error') {
+                return { 
+                  status: 'disconnected', 
+                  error: 'Connection error' 
+                }
+              }
+              return prev
             })
             
             // Attempt reconnection with exponential backoff
@@ -112,9 +145,15 @@ export const useRealtimeMessages = ({
               const delay = reconnectDelay * Math.pow(2, reconnectAttempts)
               reconnectAttempts++
               
-              setConnectionState({ 
-                status: 'reconnecting', 
-                error: `Reconnecting... (attempt ${reconnectAttempts}/${maxReconnectAttempts})` 
+              setConnectionState((prev) => {
+                const newError = `Reconnecting... (attempt ${reconnectAttempts}/${maxReconnectAttempts})`
+                if (prev.status !== 'reconnecting' || prev.error !== newError) {
+                  return { 
+                    status: 'reconnecting', 
+                    error: newError
+                  }
+                }
+                return prev
               })
               
               setTimeout(() => {
@@ -124,13 +163,24 @@ export const useRealtimeMessages = ({
                 setupSubscription()
               }, delay)
             } else {
-              setConnectionState({ 
-                status: 'disconnected', 
-                error: 'Failed to connect after multiple attempts. Please refresh the page.' 
+              setConnectionState((prev) => {
+                const newError = 'Failed to connect after multiple attempts. Please refresh the page.'
+                if (prev.status !== 'disconnected' || prev.error !== newError) {
+                  return { 
+                    status: 'disconnected', 
+                    error: newError
+                  }
+                }
+                return prev
               })
             }
           } else if (status === 'CLOSED') {
-            setConnectionState({ status: 'disconnected', error: 'Connection closed' })
+            setConnectionState((prev) => {
+              if (prev.status !== 'disconnected' || prev.error !== 'Connection closed') {
+                return { status: 'disconnected', error: 'Connection closed' }
+              }
+              return prev
+            })
           }
         })
     }
@@ -142,7 +192,7 @@ export const useRealtimeMessages = ({
         supabase.removeChannel(channel)
       }
     }
-  }, [chatId, onNewMessage, supabase])
+  }, [chatId, supabase])
 
   // Mark messages as read
   const markAsRead = useCallback(async (messageIds: string[]) => {

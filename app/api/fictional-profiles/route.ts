@@ -1,11 +1,13 @@
 /**
  * API route for fetching fictional profiles with server-side caching
  * Supports filtering by gender, age range, and location
+ * Excludes profiles that the user already has active chats with
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getCachedFictionalProfiles } from '@/lib/utils/cache'
 import { FictionalUser } from '@/types/database'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +16,7 @@ export async function GET(request: NextRequest) {
     const minAge = searchParams.get('minAge')
     const maxAge = searchParams.get('maxAge')
     const location = searchParams.get('location')
+    const userId = searchParams.get('userId')
 
     // Validate gender parameter
     if (!gender || (gender !== 'male' && gender !== 'female')) {
@@ -25,6 +28,21 @@ export async function GET(request: NextRequest) {
 
     // Fetch cached profiles by gender
     let profiles = await getCachedFictionalProfiles(gender)
+
+    // If userId is provided, exclude profiles that the user already has chats with
+    if (userId) {
+      const supabase = await createServerClient()
+      const { data: existingChats } = await supabase
+        .from('chats')
+        .select('fictional_user_id')
+        .eq('real_user_id', userId)
+        .eq('is_active', true)
+
+      if (existingChats && existingChats.length > 0) {
+        const excludedIds = new Set(existingChats.map(chat => chat.fictional_user_id))
+        profiles = profiles.filter((p: FictionalUser) => !excludedIds.has(p.id))
+      }
+    }
 
     // Apply additional filters in-memory (since cache is by gender only)
     if (minAge) {

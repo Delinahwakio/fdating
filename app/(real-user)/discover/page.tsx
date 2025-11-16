@@ -75,6 +75,11 @@ export default function DiscoverPage() {
         params.append('location', filters.location)
       }
 
+      // Add userId to exclude profiles already in chats
+      if (user) {
+        params.append('userId', user.id)
+      }
+
       // Fetch from cached API route
       const response = await fetch(`/api/fictional-profiles?${params.toString()}`)
       

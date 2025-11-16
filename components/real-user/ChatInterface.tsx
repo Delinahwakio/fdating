@@ -1,6 +1,6 @@
 'use client'
 
-import { FC, useState, useEffect, useRef, useCallback } from 'react'
+import { FC, useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { GlassCard } from '@/components/shared/GlassCard'
 import { GlassButton } from '@/components/shared/GlassButton'
 import { GlassInput } from '@/components/shared/GlassInput'
@@ -36,6 +36,9 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Memoize markAsRead callback to avoid recreating onNewMessage
+  const markAsReadRef = useRef<((messageIds: string[]) => Promise<void>) | null>(null)
+
   // Use real-time messages hook
   const {
     messages,
@@ -46,13 +49,18 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
   } = useRealtimeMessages({
     chatId,
     initialMessages,
-    onNewMessage: (message) => {
+    onNewMessage: useCallback((message) => {
       // Mark incoming messages as read
-      if (message.sender_type === 'fictional') {
-        markAsRead([message.id])
+      if (message.sender_type === 'fictional' && markAsReadRef.current) {
+        markAsReadRef.current([message.id])
       }
-    }
+    }, [])
   })
+
+  // Update ref when markAsRead changes
+  useEffect(() => {
+    markAsReadRef.current = markAsRead
+  }, [markAsRead])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

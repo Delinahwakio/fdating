@@ -58,17 +58,26 @@ export default function OperatorChatPage() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('platform_config')
           .select('value')
           .eq('key', 'idle_timeout_minutes')
-          .single()
+          .maybeSingle()
+        
+        if (error) {
+          console.error('Error fetching idle timeout config:', error)
+          return
+        }
         
         if (data?.value) {
-          setIdleTimeoutMinutes(parseInt(data.value))
+          const timeoutValue = typeof data.value === 'string' ? parseInt(data.value) : data.value
+          if (!isNaN(timeoutValue) && timeoutValue > 0) {
+            setIdleTimeoutMinutes(timeoutValue)
+          }
         }
       } catch (error) {
         console.error('Error fetching idle timeout config:', error)
+        // Use default value on error
       }
     }
     fetchConfig()
@@ -83,10 +92,30 @@ export default function OperatorChatPage() {
     })
   }, [])
 
-  const handleIdleTimeout = useCallback(() => {
-    toast.error('Chat reassigned due to inactivity')
+  const handleIdleTimeout = useCallback(async () => {
+    // Unassign chat when operator becomes idle
+    try {
+      const response = await fetch('/api/operator/unassign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chatId,
+          reason: 'operator_idle_timeout'
+        }),
+      })
+
+      if (!response.ok) {
+        console.error('Failed to unassign chat on idle timeout')
+      }
+    } catch (error) {
+      console.error('Error unassigning chat on idle timeout:', error)
+    }
+
+    toast.error('Chat unassigned due to inactivity')
     router.push('/operator/waiting')
-  }, [router])
+  }, [router, chatId])
 
   const handleDismissWarning = useCallback(() => {
     setShowIdleWarning(false)

@@ -1,6 +1,7 @@
 'use client'
 
 import { FC, useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { GlassButton } from '@/components/shared/GlassButton'
 import { GlassInput } from '@/components/shared/GlassInput'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
@@ -26,6 +27,7 @@ export const OperatorChatInterface: FC<OperatorChatInterfaceProps> = ({
   fictionalUserName,
   initialMessages
 }) => {
+  const router = useRouter()
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([])
   const [messageInput, setMessageInput] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -92,6 +94,13 @@ export const OperatorChatInterface: FC<OperatorChatInterfaceProps> = ({
 
       // Remove optimistic message
       setOptimisticMessages(prev => prev.filter(m => m.id !== tempId))
+      
+      // After operator sends message, redirect to waiting page
+      // The chat is now unassigned and will become assignable again when real user responds
+      toast.success('Message sent! Returning to waiting room...')
+      setTimeout(() => {
+        router.push('/operator/waiting')
+      }, 1000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message')
       setOptimisticMessages(prev => prev.filter(m => m.id !== tempId))

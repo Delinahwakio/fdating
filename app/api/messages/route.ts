@@ -132,19 +132,48 @@ export async function POST(request: NextRequest) {
       throw ErrorTypes.DATABASE_ERROR('Failed to send message')
     }
 
-    // Update chat last_message_at and message_count
+    // When real user sends a message, the chat becomes assignable
+    // If chat is already assigned, it means operator finished, so unassign it
+    // If chat is not assigned, it's already assignable, just update timestamps
+    const { data: chatBeforeUpdate } = await supabase
+      .from('chats')
+      .select('assigned_operator_id, assignment_time')
+      .eq('id', chatId)
+      .single()
+
+    // Update chat timestamps
+    const updateData: any = {
+      last_message_at: new Date().toISOString(),
+      message_count: currentMessageCount + 1,
+      updated_at: new Date().toISOString()
+    }
+
+    // If chat is assigned, unassign it (operator finished, real user sent new message)
+    // This makes the chat assignable again
+    if (chatBeforeUpdate?.assigned_operator_id) {
+      updateData.assigned_operator_id = null
+      updateData.assignment_time = null
+    }
+
     const { error: updateError } = await supabase
       .from('chats')
-      .update({
-        last_message_at: new Date().toISOString(),
-        message_count: currentMessageCount + 1,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', chatId)
 
     if (updateError) {
       console.error('Failed to update chat:', updateError)
       // Don't fail the request if chat update fails
+    } else if (chatBeforeUpdate?.assigned_operator_id) {
+      // Log the release if there was a previous operator
+      await supabase
+        .from('chat_assignments')
+        .update({
+          released_at: new Date().toISOString(),
+          release_reason: 'real_user_sent_message'
+        })
+        .eq('chat_id', chatId)
+        .eq('operator_id', chatBeforeUpdate.assigned_operator_id)
+        .is('released_at', null)
     }
 
     // Get updated credits

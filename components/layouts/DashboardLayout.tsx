@@ -2,7 +2,8 @@
 
 import { ReactNode, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/contexts/AuthContext'
 import { cn } from '@/lib/utils/cn'
 
 interface DashboardLayoutProps {
@@ -11,6 +12,7 @@ interface DashboardLayoutProps {
 
 const navItems = [
   { href: '/discover', label: 'Discover', icon: '🔍' },
+  { href: '/chats', label: 'Chats', icon: '💬' },
   { href: '/favorites', label: 'Favorites', icon: '❤️' },
   { href: '/credits', label: 'Credits', icon: '💳' },
   { href: '/me', label: 'Profile', icon: '👤' },
@@ -18,7 +20,18 @@ const navItems = [
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const pathname = usePathname()
+  const router = useRouter()
+  const { signOut } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      router.push('/')
+    } catch (error) {
+      console.error('Error logging out:', error)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-primary-bg">
@@ -48,6 +61,13 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   <span>{item.label}</span>
                 </Link>
               ))}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 rounded-glass-sm transition-all text-gray-300 hover:bg-glass-light hover:text-white"
+              >
+                <span>🚪</span>
+                <span>Logout</span>
+              </button>
             </nav>
 
             {/* Mobile Menu Button */}
@@ -100,6 +120,13 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   <span>{item.label}</span>
                 </Link>
               ))}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 px-4 py-3 rounded-glass-sm transition-all text-gray-300 hover:bg-glass-light hover:text-white"
+              >
+                <span className="text-xl">🚪</span>
+                <span>Logout</span>
+              </button>
             </nav>
           )}
         </div>
