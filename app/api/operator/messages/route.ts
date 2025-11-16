@@ -71,14 +71,16 @@ export async function POST(request: NextRequest) {
       throw ErrorTypes.DATABASE_ERROR('Failed to send message')
     }
 
-    // After operator sends message, unassign the chat so operator can get new assignments
-    // The chat will become assignable again when real user sends another message
+    // After operator sends message, mark chat as waiting for real user reply
+    // This prevents the chat from being reassigned until real user responds
     const { error: updateError } = await supabase
       .from('chats')
       .update({ 
         last_message_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        assigned_operator_id: null, // Unassign after operator sends message
+        chat_state: 'waiting_real_user_reply', // Mark as waiting for real user
+        operator_replied_at: new Date().toISOString(), // Track when operator replied
+        assigned_operator_id: null, // Unassign so operator can get new chats
         assignment_time: null
       })
       .eq('id', chatId)
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('Error updating chat:', updateError)
     } else {
-      // Log the release
+      // Log the release - operator finished their turn
       await supabase
         .from('chat_assignments')
         .update({
@@ -96,6 +98,13 @@ export async function POST(request: NextRequest) {
         .eq('chat_id', chatId)
         .eq('operator_id', user.id)
         .is('released_at', null)
+
+      // Remove operator activity record since chat is no longer assigned
+      await supabase
+        .from('operator_activity')
+        .delete()
+        .eq('chat_id', chatId)
+        .eq('operator_id', user.id)
     }
 
     // Update operator stats - increment total_messages

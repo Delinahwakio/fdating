@@ -28,7 +28,6 @@ export const OperatorChatInterface: FC<OperatorChatInterfaceProps> = ({
   initialMessages
 }) => {
   const router = useRouter()
-  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([])
   const [messageInput, setMessageInput] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +45,7 @@ export const OperatorChatInterface: FC<OperatorChatInterfaceProps> = ({
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages, optimisticMessages])
+  }, [messages])
 
   const handleSendMessage = async () => {
     if (!messageInput.trim() || isSending) return
@@ -60,22 +59,6 @@ export const OperatorChatInterface: FC<OperatorChatInterfaceProps> = ({
     setError(null)
     setMessageInput('')
     setIsSending(true)
-
-    // Create optimistic message
-    const tempId = `temp-${Date.now()}`
-    const optimisticMsg: Message = {
-      id: tempId,
-      chat_id: chatId,
-      sender_type: 'fictional',
-      content,
-      handled_by_operator_id: operatorId,
-      is_free_message: false,
-      created_at: new Date().toISOString(),
-      delivered_at: null,
-      read_at: null
-    }
-
-    setOptimisticMessages(prev => [...prev, optimisticMsg])
 
     try {
       const response = await fetch('/api/operator/messages', {
@@ -92,8 +75,7 @@ export const OperatorChatInterface: FC<OperatorChatInterfaceProps> = ({
         throw new Error(errorData.error || 'Failed to send message')
       }
 
-      // Remove optimistic message
-      setOptimisticMessages(prev => prev.filter(m => m.id !== tempId))
+      // Message will appear via realtime subscription
       
       // After operator sends message, redirect to waiting page
       // The chat is now unassigned and will become assignable again when real user responds
@@ -103,7 +85,6 @@ export const OperatorChatInterface: FC<OperatorChatInterfaceProps> = ({
       }, 1000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message')
-      setOptimisticMessages(prev => prev.filter(m => m.id !== tempId))
       toast.error('Failed to send message')
     } finally {
       setIsSending(false)
@@ -116,8 +97,6 @@ export const OperatorChatInterface: FC<OperatorChatInterfaceProps> = ({
       handleSendMessage()
     }
   }
-
-  const allMessages = [...messages, ...optimisticMessages]
 
   return (
     <div className="flex flex-col h-full">
@@ -151,13 +130,13 @@ export const OperatorChatInterface: FC<OperatorChatInterfaceProps> = ({
 
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {allMessages.length === 0 ? (
+        {messages.length === 0 ? (
           <div className="text-center text-gray-400 py-12">
             <p>No messages yet in this chat.</p>
             <p className="text-sm mt-2">Start the conversation as {fictionalUserName}</p>
           </div>
         ) : (
-          allMessages.map((message) => (
+          messages.map((message) => (
             <OperatorChatBubble
               key={message.id}
               message={message}
@@ -221,7 +200,6 @@ const OperatorChatBubble: FC<OperatorChatBubbleProps> = ({
   realUserName,
   fictionalUserName
 }) => {
-  const isOptimistic = message.id.startsWith('temp-')
   const isFictional = message.sender_type === 'fictional'
   const senderName = isFictional ? fictionalUserName : realUserName
 
@@ -242,7 +220,7 @@ const OperatorChatBubble: FC<OperatorChatBubbleProps> = ({
             isFictional
               ? 'bg-red-600/20 border border-red-500/30'
               : 'bg-gray-800/50 border border-gray-700/50'
-          } ${isOptimistic ? 'opacity-60' : ''}`}
+          }`}
         >
           <p className="text-gray-50 whitespace-pre-wrap break-words">
             {message.content}
@@ -251,9 +229,6 @@ const OperatorChatBubble: FC<OperatorChatBubbleProps> = ({
             <span>
               {formatDistanceToNow(new Date(message.created_at))}
             </span>
-            {isOptimistic && (
-              <span className="text-yellow-500">• Sending...</span>
-            )}
           </div>
         </div>
       </div>

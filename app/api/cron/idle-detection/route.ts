@@ -7,6 +7,7 @@ type Chat = {
   id: string
   assigned_operator_id: string | null
   assignment_time: string | null
+  chat_state: string | null
 }
 type OperatorActivity = {
   last_activity: string
@@ -49,10 +50,13 @@ export async function GET(request: Request) {
     const idleThreshold = new Date(Date.now() - idleTimeoutMinutes * 60 * 1000).toISOString()
 
     // Find chats that have been assigned for more than the configured timeout
+    // Only check chats in 'assigned' state (operator is actively working)
+    // Don't check 'waiting_real_user_reply' state (operator already replied)
     const { data: potentiallyIdleChats, error: chatsError } = await supabase
       .from('chats')
-      .select('id, assigned_operator_id, assignment_time')
+      .select('id, assigned_operator_id, assignment_time, chat_state')
       .not('assigned_operator_id', 'is', null)
+      .eq('chat_state', 'assigned') // Only actively assigned chats
       .lt('assignment_time', idleThreshold)
       .eq('is_active', true) as { data: Chat[] | null; error: any }
 

@@ -54,12 +54,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Unassign the chat
+    // Unassign the chat and return it to the queue
     const { error: updateError } = await supabase
       .from('chats')
       .update({
         assigned_operator_id: null,
         assignment_time: null,
+        chat_state: 'waiting_assignment', // Return to queue
         updated_at: new Date().toISOString()
       })
       .eq('id', chatId)

@@ -132,27 +132,52 @@ export async function POST(request: NextRequest) {
       throw ErrorTypes.DATABASE_ERROR('Failed to send message')
     }
 
-    // When real user sends a message, the chat becomes assignable
-    // If chat is already assigned, it means operator finished, so unassign it
-    // If chat is not assigned, it's already assignable, just update timestamps
+    // Handle chat state based on current state
+    // Key insight: Don't unassign operator if they're actively working!
     const { data: chatBeforeUpdate } = await supabase
       .from('chats')
-      .select('assigned_operator_id, assignment_time')
+      .select('assigned_operator_id, assignment_time, chat_state')
       .eq('id', chatId)
       .single()
 
-    // Update chat timestamps
+    // Determine the correct state transition
     const updateData: any = {
       last_message_at: new Date().toISOString(),
       message_count: currentMessageCount + 1,
       updated_at: new Date().toISOString()
     }
 
-    // If chat is assigned, unassign it (operator finished, real user sent new message)
-    // This makes the chat assignable again
-    if (chatBeforeUpdate?.assigned_operator_id) {
-      updateData.assigned_operator_id = null
-      updateData.assignment_time = null
+    // State transition logic:
+    // 1. If chat is 'waiting_real_user_reply' → change to 'waiting_assignment'
+    //    (Operator already replied, user replied back, needs new assignment)
+    // 
+    // 2. If chat is 'assigned' → KEEP as 'assigned'
+    //    (Operator is actively working, let them see the new message)
+    //    This handles: User sends "hey", operator gets assigned, user sends "how are you?"
+    //    Result: Operator sees both messages in same assignment
+    //
+    // 3. If chat is 'waiting_assignment' → KEEP as 'waiting_assignment'
+    //    (Already waiting for operator)
+
+    if (chatBeforeUpdate?.chat_state === 'waiting_real_user_reply') {
+      // Operator already replied, user is replying back
+      // Make chat assignable again (may go to different operator)
+      updateData.chat_state = 'waiting_assignment'
+      
+      // Clear assignment if somehow still set
+      if (chatBeforeUpdate.assigned_operator_id) {
+        updateData.assigned_operator_id = null
+        updateData.assignment_time = null
+      }
+    } else if (chatBeforeUpdate?.chat_state === 'assigned') {
+      // Operator is actively working on the chat
+      // KEEP the assignment - operator will see the new message
+      // DO NOT change chat_state
+      // DO NOT unassign operator
+      // This is the fix for the concurrent message issue!
+    } else if (chatBeforeUpdate?.chat_state === 'waiting_assignment') {
+      // Already waiting for assignment, keep waiting
+      // DO NOT change chat_state
     }
 
     const { error: updateError } = await supabase
@@ -163,17 +188,28 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('Failed to update chat:', updateError)
       // Don't fail the request if chat update fails
-    } else if (chatBeforeUpdate?.assigned_operator_id) {
-      // Log the release if there was a previous operator
+    } else if (
+      chatBeforeUpdate?.chat_state === 'waiting_real_user_reply' && 
+      chatBeforeUpdate?.assigned_operator_id
+    ) {
+      // Only log release if transitioning from waiting_real_user_reply
+      // (This means operator had replied and now user replied back)
       await supabase
         .from('chat_assignments')
         .update({
           released_at: new Date().toISOString(),
-          release_reason: 'real_user_sent_message'
+          release_reason: 'real_user_replied_after_operator'
         })
         .eq('chat_id', chatId)
         .eq('operator_id', chatBeforeUpdate.assigned_operator_id)
         .is('released_at', null)
+
+      // Remove operator activity record
+      await supabase
+        .from('operator_activity')
+        .delete()
+        .eq('chat_id', chatId)
+        .eq('operator_id', chatBeforeUpdate.assigned_operator_id)
     }
 
     // Get updated credits

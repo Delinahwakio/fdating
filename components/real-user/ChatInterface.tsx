@@ -26,7 +26,6 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
   initialCredits = 0,
   initialMessageCount = 0
 }) => {
-  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([])
   const [messageInput, setMessageInput] = useState('')
   const [credits, setCredits] = useState(initialCredits)
   const [messageCount, setMessageCount] = useState(initialMessageCount)
@@ -49,7 +48,7 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
   } = useRealtimeMessages({
     chatId,
     initialMessages,
-    onNewMessage: useCallback((message) => {
+    onNewMessage: useCallback((message: Message) => {
       // Mark incoming messages as read
       if (message.sender_type === 'fictional' && markAsReadRef.current) {
         markAsReadRef.current([message.id])
@@ -68,7 +67,7 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages, optimisticMessages])
+  }, [messages])
 
   // Handle typing indicator
   const handleTyping = useCallback(() => {
@@ -114,22 +113,6 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
     setMessageInput('')
     setIsSending(true)
 
-    // Create optimistic message
-    const tempId = `temp-${Date.now()}`
-    const optimisticMsg: Message = {
-      id: tempId,
-      chat_id: chatId,
-      sender_type: 'real',
-      content,
-      handled_by_operator_id: null,
-      is_free_message: messageCount < 3,
-      created_at: new Date().toISOString(),
-      delivered_at: null,
-      read_at: null
-    }
-
-    setOptimisticMessages(prev => [...prev, optimisticMsg])
-
     try {
       const response = await fetch('/api/messages', {
         method: 'POST',
@@ -154,11 +137,9 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
       }
       setMessageCount(prev => prev + 1)
 
-      // Remove optimistic message
-      setOptimisticMessages(prev => prev.filter(m => m.id !== tempId))
+      // Message will appear via realtime subscription
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message')
-      setOptimisticMessages(prev => prev.filter(m => m.id !== tempId))
     } finally {
       setIsSending(false)
     }
@@ -176,7 +157,6 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
     handleTyping()
   }
 
-  const allMessages = [...messages, ...optimisticMessages]
   const freeMessagesRemaining = Math.max(0, 3 - messageCount)
   const isNextMessageFree = messageCount < 3
   const isOtherUserTyping = Array.from(typingUsers).some(id => id !== currentUserId)
@@ -224,13 +204,13 @@ export const ChatInterface: FC<ChatInterfaceProps> = ({
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div className="max-w-4xl mx-auto">
-          {allMessages.length === 0 ? (
+          {messages.length === 0 ? (
             <div className="text-center text-gray-400 py-12">
               <p>No messages yet. Start the conversation!</p>
               <p className="text-sm mt-2">Your first 3 messages are free</p>
             </div>
           ) : (
-            allMessages.map((message) => (
+            messages.map((message) => (
               <ChatBubble
                 key={message.id}
                 message={message}
@@ -308,8 +288,6 @@ interface ChatBubbleProps {
 }
 
 const ChatBubble: FC<ChatBubbleProps> = ({ message, isOwn }) => {
-  const isOptimistic = message.id.startsWith('temp-')
-
   return (
     <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}>
       <div
@@ -317,7 +295,7 @@ const ChatBubble: FC<ChatBubbleProps> = ({ message, isOwn }) => {
           isOwn
             ? 'bg-red-600/20 border border-red-500/30'
             : 'bg-gray-800/50 border border-gray-700/50'
-        } ${isOptimistic ? 'opacity-60' : ''}`}
+        }`}
       >
         <p className="text-gray-50 whitespace-pre-wrap break-words">
           {message.content}
@@ -328,9 +306,6 @@ const ChatBubble: FC<ChatBubbleProps> = ({ message, isOwn }) => {
           </span>
           {message.is_free_message && (
             <span className="text-green-500">• Free</span>
-          )}
-          {isOptimistic && (
-            <span className="text-yellow-500">• Sending...</span>
           )}
         </div>
       </div>

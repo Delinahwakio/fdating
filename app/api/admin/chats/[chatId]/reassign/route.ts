@@ -85,6 +85,8 @@ export async function POST(
       .update({
         assigned_operator_id: operatorId,
         assignment_time: new Date().toISOString(),
+        chat_state: 'assigned', // Set to assigned state
+        last_operator_id: operatorId, // Track for same-operator prevention
         updated_at: new Date().toISOString(),
       })
       .eq('id', params.chatId)

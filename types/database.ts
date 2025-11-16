@@ -111,6 +111,9 @@ export interface Database {
           last_message_at: string
           assigned_operator_id: string | null
           assignment_time: string | null
+          chat_state: string
+          last_operator_id: string | null
+          operator_replied_at: string | null
           is_active: boolean
           created_at: string
           updated_at: string
@@ -125,6 +128,9 @@ export interface Database {
           last_message_at?: string
           assigned_operator_id?: string | null
           assignment_time?: string | null
+          chat_state?: string
+          last_operator_id?: string | null
+          operator_replied_at?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -139,6 +145,9 @@ export interface Database {
           last_message_at?: string
           assigned_operator_id?: string | null
           assignment_time?: string | null
+          chat_state?: string
+          last_operator_id?: string | null
+          operator_replied_at?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string
